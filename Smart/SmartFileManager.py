@@ -14,7 +14,7 @@ class FileManager(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("🚀 Smart File Manager PRO")
+        self.title("🚀 Smart File Manager")
         self.geometry("1000x700")
 
         self.current_path = os.getcwd()
