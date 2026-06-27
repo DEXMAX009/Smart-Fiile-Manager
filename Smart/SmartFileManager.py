@@ -1,8 +1,8 @@
 import os
 import shutil
+import hashlib
 import customtkinter as ctk
 from tkinter import filedialog
-from datetime import datetime
 
 
 ctk.set_appearance_mode("dark")
@@ -14,121 +14,76 @@ class FileManager(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Smart File Manager")
-        self.geometry("1000x650")
+        self.title("🚀 Smart File Manager PRO")
+        self.geometry("1000x700")
 
         self.current_path = os.getcwd()
-        self.history = []
 
-        # Заголовок
-        self.title_label = ctk.CTkLabel(
+
+        title = ctk.CTkLabel(
             self,
-            text="Smart File Manager",
-            font=("Arial", 30)
+            text="✨ Smart File Manager PRO",
+            font=("Arial",30)
         )
-        self.title_label.pack(pady=15)
+
+        title.pack(pady=15)
 
 
-        # Поиск
-        self.search = ctk.CTkEntry(
+
+        self.path_label = ctk.CTkLabel(
             self,
-            placeholder_text="🔍 Поиск файла..."
+            text=self.current_path
         )
-        self.search.pack(fill="x", padx=30)
 
-        self.search.bind("<KeyRelease>", lambda e:self.show_files())
+        self.path_label.pack()
 
 
-        # Панель кнопок
 
-        panel = ctk.CTkFrame(self)
-        panel.pack(pady=15)
+        buttons = ctk.CTkFrame(self)
+        buttons.pack(pady=15)
+
 
 
         ctk.CTkButton(
-            panel,
-            text="Открыть папку",
+            buttons,
+            text="📂 Папка",
             command=self.open_folder
-        ).grid(row=0,column=0,padx=10)
+        ).grid(row=0,column=0,padx=5)
 
 
         ctk.CTkButton(
-            panel,
-            text="Найти мусор",
-            command=self.clean
-        ).grid(row=0,column=1,padx=10)
-
-
-        ctk.CTkButton(
-            panel,
-            text="Сортировать",
+            buttons,
+            text="📦 Сортировать",
             command=self.organize
-        ).grid(row=0,column=2,padx=10)
+        ).grid(row=0,column=1,padx=5)
+
+
+        ctk.CTkButton(
+            buttons,
+            text="🔎 Дубликаты",
+            command=self.find_duplicates
+        ).grid(row=0,column=2,padx=5)
+
+
+        ctk.CTkButton(
+            buttons,
+            text="📊 Анализ",
+            command=self.analyze
+        ).grid(row=0,column=3,padx=5)
 
 
 
-        # Список файлов
-
-        self.listbox = ctk.CTkTextbox(
+        self.output = ctk.CTkTextbox(
             self,
             width=900,
-            height=350,
-            font=("Consolas",15)
+            height=400
         )
 
-        self.listbox.pack(pady=20)
-
-
-        self.info = ctk.CTkLabel(
-            self,
-            text=""
-        )
-
-        self.info.pack()
-
-
-        self.show_files()
+        self.output.pack()
 
 
 
-    # показать файлы
-
-    def show_files(self):
-
-        self.listbox.delete("0.0","end")
-
-        text=self.search.get().lower()
-
-
-        size=0
-
-        for file in os.listdir(self.current_path):
-
-            if text in file.lower():
-
-                path=os.path.join(
-                    self.current_path,
-                    file
-                )
-
-                icon="" if os.path.isdir(path) else ""
-
-                if os.path.isfile(path):
-                    size+=os.path.getsize(path)
-
-                self.listbox.insert(
-                    "end",
-                    f"{icon} {file}\n"
-                )
-
-
-        self.info.configure(
-            text=f" {self.current_path} | Размер: {size//1024} KB"
-        )
-
-
-
-    # открыть папку
+    # выбор папки
 
     def open_folder(self):
 
@@ -136,106 +91,242 @@ class FileManager(ctk.CTk):
 
         if folder:
 
-            self.history.append(
-                self.current_path
-            )
-
             self.current_path=folder
 
-            self.show_files()
+            self.path_label.configure(
+                text=folder
+            )
+
+            self.show()
 
 
 
-    # очистка временных файлов
+    # показать файлы
 
-    def clean(self):
+    def show(self):
 
-        deleted=0
+        self.output.delete(
+            "0.0",
+            "end"
+        )
+
+
+        for f in os.listdir(
+            self.current_path
+        ):
+
+            self.output.insert(
+                "end",
+                "📄 "+f+"\n"
+            )
+
+
+
+    # НОВАЯ правильная сортировка
+
+
+    def organize(self):
+
+        folders={
+
+            "Фото":[
+                ".png",".jpg",".jpeg",".webp"
+            ],
+
+            "Видео":[
+                ".mp4",".avi",".mkv"
+            ],
+
+            "Музыка":[
+                ".mp3",".wav"
+            ],
+
+            "Документы":[
+                ".txt",".pdf",".docx"
+            ]
+
+        }
+
+
+        moved=0
+
+
+        for file in os.listdir(
+            self.current_path
+        ):
+
+            full=os.path.join(
+                self.current_path,
+                file
+            )
+
+
+            if not os.path.isfile(full):
+                continue
+
+
+
+            ext=os.path.splitext(
+                file
+            )[1].lower()
+
+
+
+            for folder,extensions in folders.items():
+
+                if ext in extensions:
+
+
+                    target_folder=os.path.join(
+                        self.current_path,
+                        folder
+                    )
+
+
+                    # создаём только если нужен
+
+                    os.makedirs(
+                        target_folder,
+                        exist_ok=True
+                    )
+
+
+                    shutil.move(
+                        full,
+                        os.path.join(
+                            target_folder,
+                            file
+                        )
+                    )
+
+
+                    moved+=1
+                    break
+
+
+
+        self.output.insert(
+            "end",
+            f"\n✅ Перемещено файлов: {moved}\n"
+        )
+
+
+        self.show()
+
+
+
+    # поиск дубликатов
+
+
+    def find_duplicates(self):
+
+        hashes={}
+
+        duplicates=[]
+
 
         for root,dirs,files in os.walk(
             self.current_path
         ):
 
+
+            for file in files:
+
+
+                path=os.path.join(
+                    root,
+                    file
+                )
+
+
+                try:
+
+                    h=hashlib.md5(
+                        open(path,"rb").read()
+                    ).hexdigest()
+
+
+                    if h in hashes:
+
+                        duplicates.append(
+                            path
+                        )
+
+                    else:
+
+                        hashes[h]=path
+
+
+                except:
+
+                    pass
+
+
+
+        self.output.insert(
+            "end",
+            "\n🔁 Дубликаты:\n"
+        )
+
+
+        for d in duplicates:
+
+            self.output.insert(
+                "end",
+                d+"\n"
+            )
+
+
+
+    # анализ папки
+
+
+    def analyze(self):
+
+        count=0
+        size=0
+
+
+        for root,dirs,files in os.walk(
+            self.current_path
+        ):
+
+
             for f in files:
 
-                if f.endswith(
-                    (".tmp",".log",".bak")
-                ):
+                try:
 
-                    try:
+                    path=os.path.join(
+                        root,f
+                    )
 
-                        os.remove(
-                            os.path.join(root,f)
-                        )
+                    size+=os.path.getsize(path)
 
-                        deleted+=1
-
-                    except:
-                        pass
+                    count+=1
 
 
-        self.listbox.insert(
+                except:
+                    pass
+
+
+
+        mb=size/1024/1024
+
+
+        self.output.insert(
             "end",
-            f"\n Удалено файлов: {deleted}\n"
+            f"""
+
+📊 Анализ папки:
+
+Файлов: {count}
+
+Размер:
+{mb:.2f} MB
+
+"""
         )
 
-
-
-    # сортировка файлов
-
-    def organize(self):
-
-        categories={
-
-            "Фото":
-            [".png",".jpg",".jpeg"],
-
-            "Видео":
-            [".mp4",".avi"],
-
-            "Документы":
-            [".pdf",".docx",".txt"],
-
-            "Музыка":
-            [".mp3",".wav"]
-
-        }
-
-
-        for folder,extensions in categories.items():
-
-            folder_path=os.path.join(
-                self.current_path,
-                folder
-            )
-
-            os.makedirs(
-                folder_path,
-                exist_ok=True
-            )
-
-
-            for file in os.listdir(
-                self.current_path
-            ):
-
-                for ext in extensions:
-
-                    if file.endswith(ext):
-
-                        shutil.move(
-                            file,
-                            folder_path
-                        )
-
-
-
-        self.show_files()
-
-        self.listbox.insert(
-            "end",
-            "\n Файлы отсортированы!\n"
-        )
 
 
 
