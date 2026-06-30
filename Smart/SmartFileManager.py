@@ -4,13 +4,10 @@ import zipfile
 import customtkinter as ctk
 
 from tkinter import filedialog
-from PIL import Image, ImageTk
-
 
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
-
 
 
 class FileManager(ctk.CTk):
@@ -19,80 +16,173 @@ class FileManager(ctk.CTk):
 
         super().__init__()
 
-
-        self.title("Smart File Manager PRO")
+        self.title("🚀 Smart File Manager PRO")
         self.geometry("1100x750")
 
 
         self.path=os.getcwd()
 
+        self.selected_file=None
+
 
 
         ctk.CTkLabel(
             self,
-            text="🚀 Smart File Manager PRO",
+            text="✨ Smart File Manager PRO",
             font=("Arial",30)
         ).pack(pady=15)
 
 
 
-        buttons=ctk.CTkFrame(self)
-        buttons.pack()
+        panel=ctk.CTkFrame(self)
+        panel.pack()
 
 
 
-        ctk.CTkButton(
-            buttons,
-            text="📂 Папка",
-            command=self.open_folder
-        ).grid(row=0,column=0,padx=5)
+        buttons=[
+
+            ("📂 Папка",self.open_folder),
+
+            ("📊 Размер",self.sort_size),
+
+            ("🧹 Очистка",self.smart_clean),
+
+            ("📦 ZIP",self.make_zip)
+
+        ]
 
 
-        ctk.CTkButton(
-            buttons,
-            text="📊 Размер",
-            command=self.sort_size
-        ).grid(row=0,column=1,padx=5)
+        for i,(txt,cmd) in enumerate(buttons):
 
-
-        ctk.CTkButton(
-            buttons,
-            text="📦 Создать ZIP",
-            command=self.make_zip
-        ).grid(row=0,column=2,padx=5)
-
-
-        ctk.CTkButton(
-            buttons,
-            text="🖼 Превью",
-            command=self.preview
-        ).grid(row=0,column=3,padx=5)
+            ctk.CTkButton(
+                panel,
+                text=txt,
+                command=cmd
+            ).grid(
+                row=0,
+                column=i,
+                padx=5
+            )
 
 
 
-        self.list=ctk.CTkTextbox(
+
+        self.files=ctk.CTkScrollableFrame(
             self,
-            width=700,
-            height=400
+            width=500,
+            height=450
         )
 
-        self.list.pack(side="left",padx=20,pady=20)
-
-
-
-        self.image_label=ctk.CTkLabel(
-            self,
-            text="Нет изображения"
+        self.files.pack(
+            side="left",
+            padx=20,
+            pady=20
         )
 
-        self.image_label.pack(
+
+
+        self.info=ctk.CTkTextbox(
+            self,
+            width=400,
+            height=300
+        )
+
+        self.info.pack(
             side="right",
-            padx=30
+            padx=20
         )
 
 
 
-    # выбор папки
+        self.show()
+
+
+
+    # загрузка файлов
+
+
+    def show(self):
+
+        for w in self.files.winfo_children():
+
+            w.destroy()
+
+
+
+        for file in os.listdir(self.path):
+
+
+            btn=ctk.CTkButton(
+
+                self.files,
+
+                text="📄 "+file,
+
+                anchor="w",
+
+                command=lambda f=file:
+                self.select_file(f)
+
+            )
+
+            btn.pack(
+                fill="x",
+                pady=3
+            )
+
+
+
+
+
+    # выделение файла
+
+
+    def select_file(self,file):
+
+
+        self.selected_file=file
+
+
+        full=os.path.join(
+            self.path,
+            file
+        )
+
+
+        size=os.path.getsize(full)/1024/1024
+
+
+        self.info.delete(
+            "0.0",
+            "end"
+        )
+
+
+        self.info.insert(
+            "end",
+
+f"""
+Выбран файл:
+
+📄 {file}
+
+
+Размер:
+{size:.2f} MB
+
+
+Путь:
+
+{full}
+
+"""
+        )
+
+
+
+
+    # папка
+
 
     def open_folder(self):
 
@@ -106,26 +196,9 @@ class FileManager(ctk.CTk):
 
 
 
-    # обычный список
-
-    def show(self):
-
-        self.list.delete(
-            "0.0",
-            "end"
-        )
 
 
-        for f in os.listdir(self.path):
-
-            self.list.insert(
-                "end",
-                f+" \n"
-            )
-
-
-
-    # СОРТИРОВКА ПО РАЗМЕРУ
+    # сортировка по размеру
 
 
     def sort_size(self):
@@ -136,21 +209,19 @@ class FileManager(ctk.CTk):
 
         for f in os.listdir(self.path):
 
-
-            full=os.path.join(
+            p=os.path.join(
                 self.path,
                 f
             )
 
-
-            if os.path.isfile(full):
-
-                size=os.path.getsize(full)
+            if os.path.isfile(p):
 
                 files.append(
-                    (f,size)
+                    (
+                        f,
+                        os.path.getsize(p)
+                    )
                 )
-
 
 
         files.sort(
@@ -159,116 +230,141 @@ class FileManager(ctk.CTk):
         )
 
 
-        self.list.delete(
+        self.info.delete(
             "0.0",
             "end"
         )
 
 
-
-        for name,size in files:
-
-
-            mb=size/1024/1024
+        for f,s in files:
 
 
-            self.list.insert(
+            self.info.insert(
                 "end",
-                f"📄 {name}  |  {mb:.2f} MB\n"
+                f"{f} | {s/1024/1024:.1f} MB\n"
             )
 
 
 
 
 
-    # СОЗДАНИЕ ZIP
+
+    # умная очистка
+
+
+    def smart_clean(self):
+
+
+        found=[]
+
+
+        for root,dirs,files in os.walk(
+            self.path
+        ):
+
+
+            for file in files:
+
+
+                full=os.path.join(
+                    root,
+                    file
+                )
+
+
+                size=os.path.getsize(full)
+
+
+                # временные
+
+                if file.endswith(
+                    (".tmp",".log",".bak")
+                ):
+
+                    found.append(
+                        full
+                    )
+
+
+                # большие файлы
+
+                elif size>500*1024*1024:
+
+                    found.append(
+                        full
+                    )
+
+
+
+        self.info.delete(
+            "0.0",
+            "end"
+        )
+
+
+        self.info.insert(
+            "end",
+            "🧹 Найдено:\n\n"
+        )
+
+
+        if not found:
+
+            self.info.insert(
+                "end",
+                "Мусора нет 👍"
+            )
+
+        else:
+
+            for f in found:
+
+                self.info.insert(
+                    "end",
+                    f+" \n"
+                )
+
+
+
+
+    # ZIP
 
 
     def make_zip(self):
 
 
-        zip_name="Archive.zip"
-
-
-
         with zipfile.ZipFile(
-            zip_name,
+            "Archive.zip",
             "w"
-        ) as zipf:
+        ) as z:
 
 
-            for file in os.listdir(self.path):
+            for f in os.listdir(self.path):
 
 
-                full=os.path.join(
-                    self.path,
-                    file
-                )
-
-
-                if os.path.isfile(full):
-
-                    zipf.write(
-                        full,
-                        file
-                    )
-
-
-
-        self.list.insert(
-            "end",
-            "\n📦 ZIP создан!\n"
-        )
-
-
-
-
-    # ПРЕВЬЮ КАРТИНОК
-
-
-    def preview(self):
-
-
-        files=os.listdir(self.path)
-
-
-
-        for file in files:
-
-
-            if file.lower().endswith(
-                (".png",".jpg",".jpeg",".webp")
-            ):
-
-
-                img=Image.open(
+                if os.path.isfile(
                     os.path.join(
                         self.path,
-                        file
+                        f
                     )
-                )
+                ):
 
 
-                img.thumbnail(
-                    (300,300)
-                )
+                    z.write(
+                        os.path.join(
+                            self.path,
+                            f
+                        ),
+                        f
+                    )
 
 
-                photo=ImageTk.PhotoImage(
-                    img
-                )
 
+        self.info.insert(
+            "end",
+            "\n\n📦 ZIP создан!"
+        )
 
-                self.image_label.configure(
-                    image=photo,
-                    text=file
-                )
-
-
-                self.image_label.image=photo
-
-
-                break
 
 
 
